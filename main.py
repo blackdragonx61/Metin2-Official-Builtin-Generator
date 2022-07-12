@@ -1,26 +1,28 @@
 #blackdragonx61 / Mali
 
-import ast
+from ast import literal_eval
 from pathlib import Path
 
 PATH_BUILTINS = 'builtins'
 PATH_OUT = 'out'
 
-data : dict[str, dict] = {}
+data : dict[str, dict] = dict()
 
 def collect() -> bool:
     if not Path(PATH_BUILTINS).is_dir():
         print(f'Cannot find: {PATH_BUILTINS}')
         return False
 
-    for p in Path('builtins').glob('*.py'):
+    for p in Path(PATH_BUILTINS).glob('*.py'):
         with p.open() as f:
-            d = ast.literal_eval(f.read())
-
-            if type(d) is not dict:
-                print(f"Failed to read: {p.name}")
+            try:
+                d = literal_eval(f.read())
+            except Exception as e:
+                print(f'Error -> {f.name}: {e}')
                 continue
 
+            assert type(d) == dict, f"Error -> {p.name}: Builtin type is {type(d)} must be {dict}."
+            
             data[p.name.replace("dict.", "")] = d
 
     return True
@@ -40,9 +42,11 @@ def out() -> None:
 
             if 'var' in d:
                 for vars in d['var']:
-                    if all (t in vars for t in ('name', 'type', 'value')):
+                    if all(t in vars for t in ('name', 'type', 'value')):
                         if vars['type'] == 'str':
                             vars['value'] = '"' + vars['value'] + '"'
+                        elif vars['type'] == 'NoneType':
+                            continue
                         f.write('{} : {} = {}\n'.format(vars['name'], vars['type'], vars['value']))
                 f.write('\n')
             
